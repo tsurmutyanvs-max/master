@@ -1,5 +1,5 @@
 public
-class Master {
+class Main {
 
     public static void main(String[] args) {
 
