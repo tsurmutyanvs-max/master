@@ -1,11 +1,11 @@
 package src;
 
+import java.util.Scanner;
+
 public class Main {
-
     public static void main(String[] args) {
-
-        System.out.println("Случайное число от 0 до 1: " + Math.random());
-
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Длина текста: " + ".,m.,m.,m.,m,m.,m.,m.,m.,m,m.,m".length());
+        scanner.close();
     }
-
 }
