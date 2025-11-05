@@ -10,7 +10,7 @@ public class AccessLogParser {
         System.out.println("Введи первое число: ");
         int a = scanner.nextInt();
 
-        System.out.println("Введи второе число;");
+        System.out.println("Введи второе число:");
         int b = scanner.nextInt();
 
         //Вычисление и вывод результата
