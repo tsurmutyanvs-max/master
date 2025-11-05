@@ -3,17 +3,25 @@ package Experiments;
 import java.util.Scanner;
 
 public class AccessLogParser {
-    public static void main(String[] args) {
+    public static <scanner> void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
+
+        // Вывожу сообщения перед запросом чисел
+        System.out.println("Введи первое число: ");
         int a = scanner.nextInt();
+
+        System.out.println("Введи второе число");
         int b = scanner.nextInt();
 
-
-        System.out.println(a + b);      // сумма
-        System.out.println(a - b);      // разность
-        System.out.println(a * b);      // произведение
-        System.out.println((double) a / b); // частное как double
-
-        scanner.close();
+        //Вычисление и вывод результата
+        System.out.println("Сложение - " + (a + b));
+        System.out.println("Вычитание - " + (a - b));
+        System.out.println("Деление - " + (a / b));
+        System.out.println("Умножение - " + (a * b));
+        System.out.println("Дробное - " + ((double) a / b));
     }
 }
+
+
+
+
