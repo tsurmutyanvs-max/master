@@ -2,7 +2,10 @@ package src.main.java.ru.courses.parser;
 
 
 
+
 import java.io.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class AccessLogParser {
 
@@ -14,7 +17,6 @@ public class AccessLogParser {
     public static void parseLogFile(String path) {
         File file = new File(path);
 
-        // Проверка файла
         if (!file.exists()) {
             System.err.println(" Файл не найден: " + path);
             return;
@@ -24,41 +26,39 @@ public class AccessLogParser {
             return;
         }
 
-        int totalLines = 0;
-        int maxLength = 0;
-        int minLength = Integer.MAX_VALUE;
+        int totalRequests = 0;
+        int yandexBotCount = 0;
+        int googleBotCount = 0;
 
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                totalLines++;
-                int length = line.length();
+                totalRequests++;
 
-                // Проверка длины строки (критерий 5)
-                if (length > 1024) {
-                    throw new LineTooLongException(
-                            String.format("Строка #%d слишком длинная: %d символов (макс. 1024)",
-                                    totalLines, length)
-                    );
+                // Извлекаем User-Agent (предполагаем, что он в кавычках)
+                String[] parts = line.split("\"");
+                if (parts.length >= 7) {
+                    String userAgent = parts[6].trim();
+
+                    if (userAgent.contains("YandexBot")) {
+                        yandexBotCount++;
+                    } else if (userAgent.contains("Googlebot")) {
+                        googleBotCount++;
+                    }
                 }
-
-                // Обновление макс/мин
-                if (length > maxLength) maxLength = length;
-                if (length < minLength) minLength = length;
             }
 
-            // Вывод результатов (критерии 2,3,4)
-            System.out.println(" Анализ файла '" + path + "' завершён:");
-            System.out.println("• Общее количество строк: " + totalLines);
-            System.out.println("• Длина самой длинной строки: " + maxLength);
-            System.out.println("• Длина самой короткой строки: " + minLength);
+            // Вывод статистики
+            double yandexBotRatio = totalRequests > 0 ? (double) yandexBotCount / totalRequests : 0;
+            double googleBotRatio = totalRequests > 0 ? (double) googleBotCount / totalRequests : 0;
 
-        } catch (LineTooLongException e) {
-            // Критерий 5 и 6: собственный класс исключения наследуется от RuntimeException
-            System.err.println(" Прервано: " + e.getMessage());
+            System.out.printf(" Анализ завершён:%n");
+            System.out.printf(" Общее количество запросов: %d%n", totalRequests);
+            System.out.printf(" Запросы от YandexBot: %d (%.2f%%)%n", yandexBotCount, yandexBotRatio * 100);
+            System.out.printf(" Запросы от GoogleBot: %d (%.2f%%)%n", googleBotCount, googleBotRatio * 100);
+
         } catch (IOException e) {
             System.err.println(" Ошибка ввода-вывода: " + e.getMessage());
         }
     }
 }
-
