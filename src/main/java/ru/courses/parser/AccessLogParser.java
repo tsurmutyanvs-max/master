@@ -1,7 +1,11 @@
 package src.main.java.ru.courses.parser;
 
 
+
+
 import java.io.*;
+import java.util.Map;
+import java.util.Set;
 
 public class AccessLogParser {
 
@@ -37,6 +41,12 @@ public class AccessLogParser {
 
             System.out.printf("Анализ завершён:%n");
             System.out.printf("• Средний трафик за час: %.2f байт%n", stats.getTrafficRate());
+
+            Set<String> pages = stats.getUniquePages();
+            System.out.println("Уникальные страницы: " + pages);
+
+            Map<String, Double> osStats = stats.getOsStatistics();
+            osStats.forEach((os, ratio) -> System.out.printf("%s: %.2f%%\n", os, ratio * 100));
 
         } catch (IOException e) {
             System.err.println("Ошибка ввода-вывода: " + e.getMessage());
