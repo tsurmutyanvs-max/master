@@ -2,6 +2,7 @@ package src.main.java.ru.courses.parser;
 
 
 
+
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -11,11 +12,17 @@ public class Statistics {
     private ZonedDateTime minTime = null;
     private ZonedDateTime maxTime = null;
 
-    // Для хранения уникальных страниц (код 200)
+    // Для существующих страниц (код 200)
     private Set<String> uniquePages = new HashSet<>();
 
-    // Для подсчёта частоты ОС
+    // Для несуществующих страниц (код 404)
+    private Set<String> nonExistentPages = new HashSet<>();
+
+    // Для статистики ОС
     private Map<String, Integer> osCounter = new HashMap<>();
+
+    // Для статистики браузеров
+    private Map<String, Integer> browserCounter = new HashMap<>();
 
     public void addEntry(LogEntry entry) {
         totalTraffic += entry.getResponseSize();
@@ -27,14 +34,23 @@ public class Statistics {
             maxTime = entry.getTime();
         }
 
-        // Part 1: добавляем страницу, если код ответа 200
+        // Существующие страницы (код 200)
         if (entry.getResponseCode() == 200) {
             uniquePages.add(entry.getPath());
         }
 
-        // Part 2: считаем ОС
+        // Несуществующие страницы (код 404)
+        if (entry.getResponseCode() == 404) {
+            nonExistentPages.add(entry.getPath());
+        }
+
+        // Статистика ОС
         String os = entry.getUserAgent().getOs();
-        osCounter.merge(os, 1, Integer::sum); // если ключ есть — прибавляем 1, если нет — создаём с 1
+        osCounter.merge(os, 1, Integer::sum);
+
+        // Статистика браузеров
+        String browser = entry.getUserAgent().getBrowser();
+        browserCounter.merge(browser, 1, Integer::sum);
     }
 
     public double getTrafficRate() {
@@ -46,27 +62,35 @@ public class Statistics {
         return (double) totalTraffic / hours;
     }
 
-
+    // --- Part 1: Существующие страницы ---
     public Set<String> getUniquePages() {
-        return new HashSet<>(uniquePages); // возвращаем копию, чтобы нельзя было изменить внутреннее состояние
+        return new HashSet<>(uniquePages);
     }
 
+    // --- Part 2: Несуществующие страницы ---
+    public Set<String> getNonExistentPages() {
+        return new HashSet<>(nonExistentPages);
+    }
 
+    // --- Part 3: Статистика ОС ---
     public Map<String, Double> getOsStatistics() {
         Map<String, Double> result = new HashMap<>();
         int total = osCounter.values().stream().mapToInt(Integer::intValue).sum();
-
-        if (total == 0) {
-            return result; // пустой Map, если нет данных
-        }
-
+        if (total == 0) return result;
         for (Map.Entry<String, Integer> entry : osCounter.entrySet()) {
-            String os = entry.getKey();
-            int count = entry.getValue();
-            double ratio = (double) count / total;
-            result.put(os, ratio);
+            result.put(entry.getKey(), (double) entry.getValue() / total);
         }
+        return result;
+    }
 
+    // --- Part 4: Статистика браузеров ---
+    public Map<String, Double> getBrowserStatistics() {
+        Map<String, Double> result = new HashMap<>();
+        int total = browserCounter.values().stream().mapToInt(Integer::intValue).sum();
+        if (total == 0) return result;
+        for (Map.Entry<String, Integer> entry : browserCounter.entrySet()) {
+            result.put(entry.getKey(), (double) entry.getValue() / total);
+        }
         return result;
     }
 }
