@@ -1,6 +1,8 @@
 package src.main.java.ru.courses.parser;
 
 
+package ru.courses.parser;
+
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -12,10 +14,13 @@ public class Statistics {
     private ZonedDateTime maxTime = null;
 
     // Для хранения всех записей
-    private List<LogEntry> entries = new ArrayList<>();
+    private final List<LogEntry> entries = new ArrayList<>();
 
-    // Для подсчёта ошибок
-    private int errorCount = 0;
+    // === ЗАДАНИЕ #2: Часть 1 — Пиковая посещаемость в секунду ===
+    private final Map<Long, Integer> visitsPerSecond = new HashMap<>();
+
+    // === ЗАДАНИЕ #2: Часть 2 — Сайты-рефереры ===
+    private final Set<String> referringSites = new HashSet<>();
 
     public void addEntry(LogEntry entry) {
         totalTraffic += entry.getResponseSize();
@@ -29,9 +34,19 @@ public class Statistics {
 
         entries.add(entry);
 
-        // Считаем ошибки
-        if (entry.getResponseCode() >= 400 && entry.getResponseCode() < 600) {
-            errorCount++;
+        // Часть 1: Пиковая посещаемость (только не-боты)
+        if (!entry.getUserAgent().isBot()) {
+            long second = entry.getTime().toEpochSecond();
+            visitsPerSecond.merge(second, 1, Integer::sum);
+        }
+
+        // Часть 2: Рефереры
+        String referer = entry.getReferer();
+        if (referer != null && !referer.isEmpty() && !referer.equals("-")) {
+            String domain = extractDomain(referer);
+            if (domain != null && !domain.isEmpty()) {
+                referringSites.add(domain);
+            }
         }
     }
 
@@ -44,53 +59,58 @@ public class Statistics {
         return (double) totalTraffic / hours;
     }
 
-    // --- Part 1: Среднее количество посещений за час (не-боты) ---
-    public double getAverageVisitsPerHour() {
-        if (minTime == null || maxTime == null || entries.isEmpty()) {
-            return 0.0;
+    // === МЕТОД 1: Пиковая посещаемость в секунду ===
+    public int getPeakVisitsPerSecond() {
+        if (visitsPerSecond.isEmpty()) {
+            return 0;
         }
-        long hours = ChronoUnit.HOURS.between(minTime, maxTime);
-        if (hours == 0) hours = 1;
-        long nonBotVisits = entries.stream()
-                .filter(entry -> !entry.getUserAgent().isBot())
-                .count();
-        return (double) nonBotVisits / hours;
+        return Collections.max(visitsPerSecond.values());
     }
 
-    // --- Part 2: Среднее количество ошибочных запросов за час ---
-    public double getAverageErrorRequestsPerHour() {
-        if (minTime == null || maxTime == null || entries.isEmpty()) {
-            return 0.0;
-        }
-        long hours = ChronoUnit.HOURS.between(minTime, maxTime);
-        if (hours == 0) hours = 1;
-        return (double) errorCount / hours;
+    // === МЕТОД 2: Сайты, со страниц которых есть ссылки ===
+    public Set<String> getReferringSites() {
+        return new HashSet<>(referringSites);
     }
 
-    // --- Part 3: Средняя посещаемость одним пользователем (не-боты) ---
-    public double getAverageVisitsPerUser() {
+    // === МЕТОД 3: Максимальная посещаемость одним пользователем ===
+    public int getMaxVisitsPerUser() {
         if (entries.isEmpty()) {
-            return 0.0;
+            return 0;
         }
-        long nonBotVisits = entries.stream()
+
+        Map<String, Long> visitsByIp = entries.stream()
                 .filter(entry -> !entry.getUserAgent().isBot())
-                .count();
-        long uniqueUsers = entries.stream()
-                .filter(entry -> !entry.getUserAgent().isBot())
-                .map(LogEntry::getIpAddr)
-                .distinct()
-                .count();
-        if (uniqueUsers == 0) {
-            return 0.0;
+                .collect(Collectors.groupingBy(
+                        LogEntry::getIpAddr,
+                        Collectors.counting()
+                ));
+
+        if (visitsByIp.isEmpty()) {
+            return 0;
         }
-        return (double) nonBotVisits / uniqueUsers;
+
+        return visitsByIp.values().stream()
+                .mapToInt(Long::intValue)
+                .max()
+                .orElse(0);
     }
 
-    public Set<String> getUniquePages() {
-        return null;
-    }
-
-    public Map<String, Double> getOsStatistics() {
-        return null;
+    // === Вспомогательный метод: извлечение домена из referer ===
+    private String extractDomain(String referer) {
+        try {
+            String url = referer.trim();
+            if (url.startsWith("https://")) {
+                url = url.substring(8);
+            } else if (url.startsWith("http://")) {
+                url = url.substring(7);
+            }
+            int slashIndex = url.indexOf('/');
+            if (slashIndex != -1) {
+                url = url.substring(0, slashIndex);
+            }
+            return url.isEmpty() ? null : url;
+        } catch (Exception e) {
+            return null;
+        }
     }
 }
