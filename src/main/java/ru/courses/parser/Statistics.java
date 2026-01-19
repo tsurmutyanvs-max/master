@@ -1,28 +1,21 @@
 package src.main.java.ru.courses.parser;
 
 
-
-
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class Statistics {
     private long totalTraffic = 0;
     private ZonedDateTime minTime = null;
     private ZonedDateTime maxTime = null;
 
-    // Для существующих страниц (код 200)
-    private Set<String> uniquePages = new HashSet<>();
+    // Для хранения всех записей
+    private List<LogEntry> entries = new ArrayList<>();
 
-    // Для несуществующих страниц (код 404)
-    private Set<String> nonExistentPages = new HashSet<>();
-
-    // Для статистики ОС
-    private Map<String, Integer> osCounter = new HashMap<>();
-
-    // Для статистики браузеров
-    private Map<String, Integer> browserCounter = new HashMap<>();
+    // Для подсчёта ошибок
+    private int errorCount = 0;
 
     public void addEntry(LogEntry entry) {
         totalTraffic += entry.getResponseSize();
@@ -34,23 +27,12 @@ public class Statistics {
             maxTime = entry.getTime();
         }
 
-        // Существующие страницы (код 200)
-        if (entry.getResponseCode() == 200) {
-            uniquePages.add(entry.getPath());
+        entries.add(entry);
+
+        // Считаем ошибки
+        if (entry.getResponseCode() >= 400 && entry.getResponseCode() < 600) {
+            errorCount++;
         }
-
-        // Несуществующие страницы (код 404)
-        if (entry.getResponseCode() == 404) {
-            nonExistentPages.add(entry.getPath());
-        }
-
-        // Статистика ОС
-        String os = entry.getUserAgent().getOs();
-        osCounter.merge(os, 1, Integer::sum);
-
-        // Статистика браузеров
-        String browser = entry.getUserAgent().getBrowser();
-        browserCounter.merge(browser, 1, Integer::sum);
     }
 
     public double getTrafficRate() {
@@ -62,35 +44,53 @@ public class Statistics {
         return (double) totalTraffic / hours;
     }
 
-    // --- Part 1: Существующие страницы ---
+    // --- Part 1: Среднее количество посещений за час (не-боты) ---
+    public double getAverageVisitsPerHour() {
+        if (minTime == null || maxTime == null || entries.isEmpty()) {
+            return 0.0;
+        }
+        long hours = ChronoUnit.HOURS.between(minTime, maxTime);
+        if (hours == 0) hours = 1;
+        long nonBotVisits = entries.stream()
+                .filter(entry -> !entry.getUserAgent().isBot())
+                .count();
+        return (double) nonBotVisits / hours;
+    }
+
+    // --- Part 2: Среднее количество ошибочных запросов за час ---
+    public double getAverageErrorRequestsPerHour() {
+        if (minTime == null || maxTime == null || entries.isEmpty()) {
+            return 0.0;
+        }
+        long hours = ChronoUnit.HOURS.between(minTime, maxTime);
+        if (hours == 0) hours = 1;
+        return (double) errorCount / hours;
+    }
+
+    // --- Part 3: Средняя посещаемость одним пользователем (не-боты) ---
+    public double getAverageVisitsPerUser() {
+        if (entries.isEmpty()) {
+            return 0.0;
+        }
+        long nonBotVisits = entries.stream()
+                .filter(entry -> !entry.getUserAgent().isBot())
+                .count();
+        long uniqueUsers = entries.stream()
+                .filter(entry -> !entry.getUserAgent().isBot())
+                .map(LogEntry::getIpAddr)
+                .distinct()
+                .count();
+        if (uniqueUsers == 0) {
+            return 0.0;
+        }
+        return (double) nonBotVisits / uniqueUsers;
+    }
+
     public Set<String> getUniquePages() {
-        return new HashSet<>(uniquePages);
+        return null;
     }
 
-    // --- Part 2: Несуществующие страницы ---
-    public Set<String> getNonExistentPages() {
-        return new HashSet<>(nonExistentPages);
-    }
-
-    // --- Part 3: Статистика ОС ---
     public Map<String, Double> getOsStatistics() {
-        Map<String, Double> result = new HashMap<>();
-        int total = osCounter.values().stream().mapToInt(Integer::intValue).sum();
-        if (total == 0) return result;
-        for (Map.Entry<String, Integer> entry : osCounter.entrySet()) {
-            result.put(entry.getKey(), (double) entry.getValue() / total);
-        }
-        return result;
-    }
-
-    // --- Part 4: Статистика браузеров ---
-    public Map<String, Double> getBrowserStatistics() {
-        Map<String, Double> result = new HashMap<>();
-        int total = browserCounter.values().stream().mapToInt(Integer::intValue).sum();
-        if (total == 0) return result;
-        for (Map.Entry<String, Integer> entry : browserCounter.entrySet()) {
-            result.put(entry.getKey(), (double) entry.getValue() / total);
-        }
-        return result;
+        return null;
     }
 }
